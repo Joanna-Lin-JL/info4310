@@ -1,0 +1,238 @@
+<html>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
+
+
+    <style>
+            .outline{
+            fill: none; 
+            stroke: white; 
+            stroke-width: 1px; 
+            }
+
+            .neighborhoods{
+                fill: lightgray; 
+                stroke: none; 
+            }
+
+
+    </style>
+    <h2>How old are the trees around you in San Francisco?</h2>
+
+    <body>
+        <div>
+            <svg id="sftrees" height="1000" width="1000">
+                <circle r="10" cx="100" cy="960" stroke="none" stroke-width="0" fill="#c3e1ed"/>
+                <text id="first" x="120" y="960" fill="black">prior to 1955</text>
+                <circle r="10" cx="250" cy="960" stroke="none" stroke-width="0" fill="#9cc4d4" />
+                <text id="second" x="270" y="960" fill="black">1955 - 1971 </text>
+                <circle r="10" cx="400" cy="960" stroke="none" stroke-width="0" fill="#71a7ba" />
+                <text id="third" x="420" y="960" fill="black">1972 - 1988</text>
+                <circle r="10" cx="550" cy="960" stroke="none" stroke-width="0" fill="#45879f" />
+                <text id="fourth" x="570" y="960" fill="black">1989 - 2005</text>
+                <circle r="10" cx="700" cy="960" stroke="none" stroke-width="0" fill="#1e6e88" />
+                <text id="fifth" x="720" y="960" fill="black">2006 - 2022</text>
+            </svg>
+            <br>
+            <svg id="pie" height="1000" width="1000"></svg>
+            
+
+            <script>
+                let svg = d3.select('svg#sftrees');
+                let svg2 = d3.select('svg#pie');
+                const width = svg.attr('width');
+                const height = svg.attr('height'); 
+                const margin = {top: 10, right: 10, bottom: 100, left: 100};
+                const mapWidth = width - margin.right - margin.left; 
+                const mapHeight = height - margin.top - margin.bottom;
+                const map = svg.append('g').attr('transform', 'translate('+margin.left+','+margin.top+')');
+
+                const pieRadius = mapHeight/2 - 150;
+                const donutTranslate = width/2; 
+                const donut = svg2.append('g').attr('transform', 'translate('+donutTranslate+','+donutTranslate+')');
+
+                const requestData = async () => {
+                    //data loading
+                    const geoData = await d3.json('SF-Neighborhoods.geo.json', d3.autoType);
+                    const filteredData = await d3.csv("Street_Tree_List-2022-01-30_FILTERED.csv", d3.autoType);
+
+                    // choropleth outlines
+                    var neighborhoods = topojson.feature(geoData, geoData.objects.SFNeighborhoods);
+                    var neighborhoodsMesh = topojson.mesh(geoData, geoData.objects.SFNeighborhoods); 
+                    var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], neighborhoods);
+                    var path = d3.geoPath().projection(projection);  
+
+                    let zipPaths = map.selectAll('path.neighborhoods').data(neighborhoods.features)
+                        .join('path')
+                        .attr('class', 'neighborhoods')
+                        .attr('d', path);
+
+                    map.append('path').datum(neighborhoodsMesh)
+                        .attr('class', 'outline')
+                        .attr('d', path);
+
+                    // Data processing
+                    var positions = [0,0];
+                    var dateParse = d3.timeParse("%m/%d/%y %H:%M");
+                    var dateParseFull = d3.timeParse("%m/%d/%Y %H:%M");
+                    var counts = {};
+                    counts[1954]= 0;
+
+                    filteredData.forEach( d => {
+                        positions = projection([d.Longitude, d.Latitude]);
+                        d[0] = positions[0];
+                        d[1] = positions[1];
+
+                        if (d.PlantDate === null){
+                            d.PlantDate = dateParseFull("12/31/1954 00:00");
+                            counts[1954] += 1; 
+                        } else {
+                            d.PlantDate = dateParse(d.PlantDate);
+                            if (d.PlantDate.getFullYear() > 2024){
+                                d.PlantDate.setFullYear(d.PlantDate.getFullYear()-100);
+                            }
+                            const yr = d.PlantDate.getFullYear();
+                            if(yr in counts){
+                                counts[yr] += 1;
+                            } else {
+                                counts[yr] = 1; 
+                            }
+                            
+                        }
+                    })
+
+
+                    // making hexbins in choropleth
+                    var hexbin = d3.hexbin()
+                        .extent([[0, 0], [mapWidth, mapHeight]])
+                        .radius(10);
+
+                    // const colorScale = d3.scaleQuantile().domain(d3.map(filteredData, d => d.DBH )).range(["#fff","#d1e8ed","#adc2da","#8879b3","#762b80"]);
+                    const binExtent = d3.extent(hexbin(filteredData), d => d.length);
+                    const timeExtent = d3.extent(filteredData, d => d.PlantDate.getFullYear());
+                    timeExtent[0] = 1955;
+                    // const colorScale = d3.scaleTime()
+                    //                     .domain(timeExtent)
+                    //                     .range(['lightblue','navy'])
+                    //                     .interpolate(d3.interpolateLab);
+                    const colorScalePre = d3.scaleQuantize()   
+                         .domain(timeExtent)
+                         .range(['#9cc4d4', '#71a7ba', '#45879f', '#1e6e88']);
+                    
+                    function colorScale(d) {
+                        if (d==1954) {return '#c3e1ed'; }
+                        return colorScalePre(d);
+                    }
+                    
+                    var radius = d3.scaleSqrt() // because the area of the hexagon is view as squared radius
+                        .domain(binExtent)
+                        .range([0, 12]); 
+
+                    map.append("g")
+                        .attr("class", "hexagon")
+                        .selectAll("path")
+                        .data(hexbin(filteredData).sort(function(a, b) { return b.length - a.length; }))
+                        .enter().append("path")
+                        .attr("d", function(d) { return hexbin.hexagon(radius(d.length)); })
+                        .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+                        .attr("fill", function(d) { return colorScale(d3.median(d, function(d) { return +d.PlantDate; })); })
+                        .attr('stroke-width', 0.5)
+                        .attr('stroke', 'black');
+
+                    var colorCount = {
+                        "#c3e1ed": 0, 
+                        "#9cc4d4": 0,
+                        '#71a7ba': 0, 
+                        '#45879f': 0, 
+                        '#1e6e88': 0
+                    };
+
+                    for (let k in counts){
+                        colorCount[colorScale(k)] += counts[k]; 
+                    }
+
+                    // making donut chart
+                    const pie = d3.pie()
+                                .sort(null) 
+                                .value(d => d[1])
+                    const pieData = pie(Object.entries(colorCount))
+
+
+                    var arc = d3.arc()
+                    .innerRadius(pieRadius * 0.5)        
+                    .outerRadius(pieRadius * 0.8)
+
+                    var outerArc = d3.arc()
+                    .innerRadius(pieRadius * 0.9)
+                    .outerRadius(pieRadius * 0.9)
+
+                    donut.selectAll('allSlices')
+                        .data(pieData)
+                        .join('path')
+                        .attr('class', 'slices')
+                        .attr('d', arc)
+                        .attr('fill', d => d.data[0])
+                        .attr("stroke", "white")
+                        .style("stroke-width", "2px")
+                        .style("opacity", 1);
+
+                    donut.selectAll('allPolylines')
+                        .data(pieData)
+                        .join('polyline')
+                        .attr('class', 'polyline')
+                        .attr("stroke", "black")
+                        .style("fill", "none")
+                        .attr("stroke-width", 1)
+                        .attr('points', function(d) {
+                        const posA = arc.centroid(d) 
+                        const posB = outerArc.centroid(d)
+                        const posC = outerArc.centroid(d); 
+                        const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2 
+                        posC[0] = pieRadius * 0.95 * (midangle < Math.PI ? 1 : -1); 
+                        return [posA, posB, posC]
+                        })
+
+                        function pieLabels(d) {
+                            if (d.data[0]=='#c3e1ed'){
+                                return `prior to 1955 \n(total: ${d.data[1]} )`; 
+                            } else {
+                                const range = colorScalePre.invertExtent(d.data[0]);
+                                range[0] = Math.ceil(range[0]);
+                                range[1] = Math.floor(range[1]);
+                                return `from ${range[0]} to ${range[1]} \n(total: ${d.data[1]} )`
+                            }
+                        }
+
+
+                        donut.selectAll('allLabels')
+                        .data(pieData)
+                        .join('text')
+                        .attr('class', 'labels')
+                        .attr('font-size', 15)
+                        .text(d => pieLabels(d))
+                        .attr('transform', function(d) {
+                            const pos = outerArc.centroid(d);
+                            const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+                            pos[0] = pieRadius * 0.99 * (midangle < Math.PI ? 1 : -1);
+                            return `translate(${pos})`;
+                        })
+                        .style('text-anchor', function(d) {
+                            const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+                            return (midangle < Math.PI ? 'start' : 'end')
+                        })
+                    
+
+                }
+
+                requestData();
+
+
+            </script>
+
+        </div>
+    </body>
+
+
+</html>
