@@ -8,34 +8,36 @@
     <style>
             .outline{
             fill: none; 
-            stroke: white; 
+            stroke: black; 
             stroke-width: 1px; 
             }
 
             .neighborhoods{
-                fill: lightgray; 
+                fill: rgb(229, 229, 229); 
                 stroke: none; 
             }
 
 
     </style>
-    <h2>How old are the trees around you in San Francisco?</h2>
 
     <body>
         <div>
+            <h1>When are the trees around you planted in San Francisco?</h1>
             <svg id="sftrees" height="1000" width="1000">
                 <circle r="10" cx="100" cy="960" stroke="none" stroke-width="0" fill="#c3e1ed"/>
-                <text id="first" x="120" y="960" fill="black">prior to 1955</text>
-                <circle r="10" cx="250" cy="960" stroke="none" stroke-width="0" fill="#9cc4d4" />
-                <text id="second" x="270" y="960" fill="black">1955 - 1971 </text>
-                <circle r="10" cx="400" cy="960" stroke="none" stroke-width="0" fill="#71a7ba" />
-                <text id="third" x="420" y="960" fill="black">1972 - 1988</text>
-                <circle r="10" cx="550" cy="960" stroke="none" stroke-width="0" fill="#45879f" />
-                <text id="fourth" x="570" y="960" fill="black">1989 - 2005</text>
-                <circle r="10" cx="700" cy="960" stroke="none" stroke-width="0" fill="#1e6e88" />
-                <text id="fifth" x="720" y="960" fill="black">2006 - 2022</text>
+                <text id="first" x="120" y="965" fill="black">prior to 1955</text>
+                <circle r="10" cx="275" cy="960" stroke="none" stroke-width="0" fill="#9cc4d4" />
+                <text id="second" x="295" y="965" fill="black">1955 - 1971 </text>
+                <circle r="10" cx="450" cy="960" stroke="none" stroke-width="0" fill="#71a7ba" />
+                <text id="third" x="475" y="965" fill="black">1972 - 1988</text>
+                <circle r="10" cx="625" cy="960" stroke="none" stroke-width="0" fill="#45879f" />
+                <text id="fourth" x="645" y="965" fill="black">1989 - 2005</text>
+                <circle r="10" cx="800" cy="960" stroke="none" stroke-width="0" fill="#1e6e88" />
+                <text id="fifth" x="820" y="965" fill="black">2006 - 2022</text>
             </svg>
             <br>
+            <br>
+            <h1>What is the age distribution like as a whole?</h1>
             <svg id="pie" height="1000" width="1000"></svg>
             
 
@@ -49,9 +51,11 @@
                 const mapHeight = height - margin.top - margin.bottom;
                 const map = svg.append('g').attr('transform', 'translate('+margin.left+','+margin.top+')');
 
-                const pieRadius = mapHeight/2 - 150;
-                const donutTranslate = width/2; 
-                const donut = svg2.append('g').attr('transform', 'translate('+donutTranslate+','+donutTranslate+')');
+                const pieRadius = mapWidth/2 - 150;
+                const donutTranslateX = width/2; 
+                const donut = svg2.append('g').attr('transform', 'translate('+donutTranslateX+','+pieRadius+')');
+
+                d3.selectAll('text').attr('font-size', 20);
 
                 const requestData = async () => {
                     //data loading
@@ -86,7 +90,7 @@
                         d[1] = positions[1];
 
                         if (d.PlantDate === null){
-                            d.PlantDate = dateParseFull("12/31/1954 00:00");
+                            d.PlantDate = dateParseFull("1/1/1954 00:00");
                             counts[1954] += 1; 
                         } else {
                             d.PlantDate = dateParse(d.PlantDate);
@@ -109,14 +113,10 @@
                         .extent([[0, 0], [mapWidth, mapHeight]])
                         .radius(10);
 
-                    // const colorScale = d3.scaleQuantile().domain(d3.map(filteredData, d => d.DBH )).range(["#fff","#d1e8ed","#adc2da","#8879b3","#762b80"]);
+                    // finding extents, setting scales
                     const binExtent = d3.extent(hexbin(filteredData), d => d.length);
                     const timeExtent = d3.extent(filteredData, d => d.PlantDate.getFullYear());
                     timeExtent[0] = 1955;
-                    // const colorScale = d3.scaleTime()
-                    //                     .domain(timeExtent)
-                    //                     .range(['lightblue','navy'])
-                    //                     .interpolate(d3.interpolateLab);
                     const colorScalePre = d3.scaleQuantize()   
                          .domain(timeExtent)
                          .range(['#9cc4d4', '#71a7ba', '#45879f', '#1e6e88']);
@@ -128,19 +128,19 @@
                     
                     var radius = d3.scaleSqrt() // because the area of the hexagon is view as squared radius
                         .domain(binExtent)
-                        .range([0, 12]); 
+                        .range([2, 12]); 
 
                     map.append("g")
                         .attr("class", "hexagon")
                         .selectAll("path")
-                        .data(hexbin(filteredData).sort(function(a, b) { return b.length - a.length; }))
+                        .data(hexbin(filteredData))
                         .enter().append("path")
                         .attr("d", function(d) { return hexbin.hexagon(radius(d.length)); })
                         .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-                        .attr("fill", function(d) { return colorScale(d3.median(d, function(d) { return +d.PlantDate; })); })
+                        .attr("fill", function(d) { return colorScale(d3.median(d, function(d) { return d.PlantDate; })); })
                         .attr('stroke-width', 0.5)
                         .attr('stroke', 'black');
-
+                        
                     var colorCount = {
                         "#c3e1ed": 0, 
                         "#9cc4d4": 0,
@@ -156,27 +156,26 @@
                     // making donut chart
                     const pie = d3.pie()
                                 .sort(null) 
-                                .value(d => d[1])
-                    const pieData = pie(Object.entries(colorCount))
+                                .value(d => d[1]);
+                    const pieData = pie(Object.entries(colorCount));
 
 
-                    var arc = d3.arc()
-                    .innerRadius(pieRadius * 0.5)        
-                    .outerRadius(pieRadius * 0.8)
+                    var donutArc = d3.arc()
+                    .innerRadius(pieRadius * 0.4)        
+                    .outerRadius(pieRadius * 0.8);
 
-                    var outerArc = d3.arc()
+                    var labelArc = d3.arc()
                     .innerRadius(pieRadius * 0.9)
-                    .outerRadius(pieRadius * 0.9)
+                    .outerRadius(pieRadius * 0.9);
 
                     donut.selectAll('allSlices')
                         .data(pieData)
                         .join('path')
                         .attr('class', 'slices')
-                        .attr('d', arc)
+                        .attr('d', donutArc)
                         .attr('fill', d => d.data[0])
                         .attr("stroke", "white")
-                        .style("stroke-width", "2px")
-                        .style("opacity", 1);
+                        .style("stroke-width", "1.5px");
 
                     donut.selectAll('allPolylines')
                         .data(pieData)
@@ -185,25 +184,26 @@
                         .attr("stroke", "black")
                         .style("fill", "none")
                         .attr("stroke-width", 1)
-                        .attr('points', function(d) {
-                        const posA = arc.centroid(d) 
-                        const posB = outerArc.centroid(d)
-                        const posC = outerArc.centroid(d); 
+                        .attr('points', function(d) { 
+                        const posA = donutArc.centroid(d) 
+                        const posB = labelArc.centroid(d)
+                        const posC = labelArc.centroid(d); 
+                        // calculations given in D3 documentation/example (https://d3-graph-gallery.com/graph/donut_label.html)
                         const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2 
-                        posC[0] = pieRadius * 0.95 * (midangle < Math.PI ? 1 : -1); 
+                        posC[0] = pieRadius * 0.9 * (midangle < Math.PI ? 1 : -1); 
                         return [posA, posB, posC]
-                        })
+                        });
 
                         function pieLabels(d) {
                             if (d.data[0]=='#c3e1ed'){
-                                return `prior to 1955 \n(total: ${d.data[1]} )`; 
+                                return `prior to 1955 (total: ${d.data[1]})`; 
                             } else {
                                 const range = colorScalePre.invertExtent(d.data[0]);
                                 range[0] = Math.ceil(range[0]);
                                 range[1] = Math.floor(range[1]);
-                                return `from ${range[0]} to ${range[1]} \n(total: ${d.data[1]} )`
+                                return `from ${range[0]} to ${range[1]} \n(total: ${d.data[1]})`
                             }
-                        }
+                        };
 
 
                         donut.selectAll('allLabels')
@@ -213,15 +213,17 @@
                         .attr('font-size', 15)
                         .text(d => pieLabels(d))
                         .attr('transform', function(d) {
-                            const pos = outerArc.centroid(d);
+                            const pos = labelArc.centroid(d);
+                            // calculations given in D3 documentation/example (https://d3-graph-gallery.com/graph/donut_label.html)
                             const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
-                            pos[0] = pieRadius * 0.99 * (midangle < Math.PI ? 1 : -1);
+                            pos[0] = pieRadius * 0.93 * (midangle < Math.PI ? 1 : -1);
                             return `translate(${pos})`;
                         })
                         .style('text-anchor', function(d) {
                             const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
                             return (midangle < Math.PI ? 'start' : 'end')
-                        })
+                        }) 
+                        .style('font-size', 17);
                     
 
                 }
