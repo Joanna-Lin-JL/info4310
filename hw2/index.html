@@ -1,0 +1,380 @@
+<html>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+
+    <style>
+            .categories button {
+                background-color: #04AA6D; 
+                border: 1px solid green; 
+                color: white; 
+                padding: 10px 24px; 
+                cursor: pointer; 
+                float: left; 
+            }
+
+            .categories button:not(:last-child) {
+                border-right: none; 
+            }
+
+            .categories button:after {
+                content: "";
+                clear: both;
+                display: table;
+            }
+
+            .categories button:hover {
+                background-color: #3e8e41;
+            }
+
+            #searchbar { 
+                background-position: 10px 12px;
+                background-repeat: no-repeat; 
+                width: 100%; 
+                font-size: 16px; 
+                padding: 12px 20px 12px 40px; 
+                border: 1px solid #ddd; 
+                margin-bottom: 12px; 
+            }
+
+            #menuItems {
+                list-style-type: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            #menuItems li {
+                border: 1px solid #ddd; 
+                margin-top: -1px; 
+                background-color: #f6f6f6;
+                padding: 12px; 
+                text-decoration: none; 
+                font-size: 18px; 
+                color: black; 
+                display: block; 
+            }
+
+            #menuItems li:hover:not(.header) {
+                background-color: #eee; 
+            }
+
+    </style>
+
+    <body>
+        <div>
+            <div class="categories">
+                <button id="breakfast">Breakfast</button>
+                <button id="coffee">Coffee & Tea</button>
+                <button id="smoothies">Smoothies & Shakes</button>
+                <button id="chicken">Chicken & Fish</button>
+                <button id="beverages">Beverages</button>
+                <button id="beef">Beef & Pork</button>
+                <button id="salads">Salads</button>
+                <button id="snacks">Snacks & Sides</button>
+                <button id="desserts">Desserts</button>
+            </div>
+            <br><br><br><br>
+            <div class="search">
+                <input type="text" id="searchbar" onkeyup="searchFilter()" placeholder="Search menu">
+                <ul id="menuItems">
+                </ul>
+            </div>
+            <br><br>
+            <svg id="scatter" height="800" width="800">
+            </svg>
+            
+            <svg id="pie" height="800" width="800">
+            </svg>
+            
+            
+
+            <script>
+                const svg = d3.select("svg#pie");
+                const scatter = d3.select('svg#scatter');
+                const width = svg.attr('width');
+                const height = svg.attr('height'); 
+                const margin = {top: 75, right:75, bottom: 75, left:75}; 
+                const chartWidth = width - margin.left - margin.right; 
+                const chartHeight = height - margin.top - margin.bottom; 
+
+                var filteredData = [];
+
+                const pieRadius = chartWidth/2 - 10;
+                const donutTranslateX = width/2; 
+                const pieChart = svg.append('g').attr('transform', 'translate('+donutTranslateX+','+donutTranslateX+')');
+                
+                const breakfast = document.getElementById("breakfast");
+                const coffee = document.getElementById("coffee");
+                const smoothies = document.getElementById("smoothies");
+                const chicken = document.getElementById("chicken");
+                const beverages = document.getElementById("beverages");
+                const beef = document.getElementById("beef");
+                const salads = document.getElementById("salads");
+                const snacks = document.getElementById("snacks");
+                const desserts = document.getElementById("desserts");
+
+                const requestData = async function() {
+
+                    const data = await d3.csv("menu.csv", d3.autoType);
+                    filteredData = data;
+
+                    console.log(data);
+
+
+                    categories = {
+                        "Breakfast": [],
+                        "Coffee & Tea": [],
+                        "Smoothies & Shakes": [], 
+                        "Chicken & Fish": [], 
+                        "Beverages": [], 
+                        "Beef & Pork": [], 
+                        "Salads": [], 
+                        "Snacks & Sides": [], 
+                        "Desserts": []
+                    }
+
+                    data.forEach ( d => {
+                        categories[d.Category].push(d);
+                        d['grams'] = d['Serving Size'].match(/\((.*)\)/);
+                        // if (d['grams'] === null) console.log(d['Serving Size'])
+                        // console.log(d['grams']);
+                    });
+
+                    var items = data.map( d => d.Item );
+
+                    var nutritionData = {
+                        "Protein": 0, 
+                        "Carbohydrates": 0, 
+                        "Total Fat": 0, 
+                        "Dietary Fiber": 0, 
+                        "Sugars": 0
+                    }
+
+                    var colorScale = d3.scaleOrdinal()
+                    .domain(Object.keys(nutritionData))
+                    .range(d3.schemeSet2);
+
+                    updateNutritionData(filteredData);
+
+                    updatePie();
+
+                    var select = document.getElementById("menuItems");
+
+                    for (var i = 0; i < items.length; i++) {
+                        var option = items[i];
+                        var element = document.createElement("li");
+                        element.appendChild(document.createTextNode(option));
+                        element.onclick = function(e){searchBarClicked(e)};
+                        element.style.display = "none";
+                        select.appendChild(element);
+                    }
+
+                    function updatePie() {
+                        const pie = d3.pie()
+                                .value(function(d) {return d[1]})
+                                .sort(function(a, b) { return d3.ascending(a.key, b.key);} )
+
+                        const pieData = pie(Object.entries(nutritionData));
+
+                        const piePath = pieChart.selectAll("path").data(pieData);
+
+                        const arcGenerator = d3.arc()
+                        .innerRadius(0)
+                        .outerRadius(pieRadius);
+
+                        piePath.join('path')
+                        .transition()
+                        .duration(500)
+                        .attr('d', arcGenerator)
+                        .attr('fill', function(d){ return(colorScale(d.data[0])) })
+                        .attr("stroke", "white")
+                        .style("stroke-width", "2px")
+                        .style("opacity", 1);
+
+                        // pieChart.selectAll('polyline')
+                        //         .data(pieData)
+                        //         .join('polyline')
+                        //         .attr("stroke", "black")
+                        //         .style("fill", "none")
+                        //         .attr("stroke-width", 1)
+                        //         .attr('points', function(d) {
+                        //         var posA = arcGenerator.centroid(d) 
+                        //         var posB = arcGenerator.centroid(d) 
+                        //         var posC = arcGenerator.centroid(d); 
+                        //         var midangle = d.startAngle + (d.endAngle - d.startAngle) / 2 
+                        //         posC[0] = pieRadius * 0.95 * (midangle < Math.PI ? 1 : -1); 
+                        //         return [posA, posB, posC]
+                        //         })
+
+                        pieChart.selectAll('text')
+                        .data(pieData)
+                        .join('text')
+                        .text(function(d){ return d.data[0]})
+                        .attr("transform", function(d) { return "translate(" + arcGenerator.centroid(d) + ")";  })
+                        .style("text-anchor", "middle")
+                        .style("font-size", 17)
+                        // .attr('transform', function(d) {
+                        //     const pos = arcGenerator.centroid(d);
+                        //     const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+                        //     pos[0] = pieRadius * 0.99 * (midangle < Math.PI ? 1 : -1);
+                        //     return `translate(${pos})`;
+                        // })
+                        // .style('text-anchor', function(d) {
+                        //     const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+                        //     return (midangle < Math.PI ? 'start' : 'end')
+                        // })
+                    }
+
+                    function searchBarClicked (e) {
+                        let name = e.target.innerText;
+                        filteredData = data.filter( d => d.Item===name);
+                        let input = document.getElementById('searchbar');
+                        input.value = name;
+                        let lst = document.getElementById('menuItems');
+                        lst.setAttribute('hidden', 'hidden');
+                        updateNutritionData();
+                        updatePie();
+                    }
+
+                    breakfast.addEventListener('click', function () {buttonClicked('Breakfast')});
+                    coffee.addEventListener('click', function (){buttonClicked('Coffee & Tea')});
+                    smoothies.addEventListener('click', function (){buttonClicked('Smoothies & Shakes')});
+                    chicken.addEventListener('click', function (){buttonClicked('Chicken & Fish')});
+                    beverages.addEventListener('click', function (){buttonClicked('Beverages')});
+                    beef.addEventListener('click', function (){buttonClicked('Beef & Pork')});
+                    salads.addEventListener('click', function (){buttonClicked('Salads')});
+                    snacks.addEventListener('click', function (){buttonClicked('Snacks & Sides')});
+                    desserts.addEventListener('click', function (){buttonClicked('Desserts')});
+
+
+                    function buttonClicked (name) {
+                        console.log("search button clicked");
+                        filteredData = data.filter( d => d.Category === name);
+                        console.log(filteredData);
+                        updateNutritionData(); 
+                        updatePie();
+                    }
+
+                    function updateNutritionData() {
+                        console.log("update nutrition");
+                        Object.keys(nutritionData).forEach( k => {
+                            nutritionData[k] = 0; 
+                        })
+                        filteredData.forEach( d => {
+                        Object.keys(nutritionData).forEach( k => {
+                            nutritionData[k] += d[k];
+                        })
+                        nutritionData['Carbohydrates'] -= d["Dietary Fiber"] - d["Sugars"]; // assume carbs included the two
+                    })
+                    }
+
+                    let scatterChart = scatter.append('g')
+                                    .attr('transform',`translate(${margin.left},${margin.top})`);
+
+                    let scatterLabels = scatter.append('g')
+                                    .attr('id', 'scatterLabels');
+
+                    updateScatter('Sodium');
+
+
+                    function updateScatter (yname){
+                        const calorieExtent = d3.extent(filteredData, d => d['Calories'] );
+                        const calorieScale = d3.scaleLinear().domain(calorieExtent).range([0, chartWidth]);
+
+                        const yExtent = d3.extent(filteredData, d => d[yname]);
+                        const yScale = d3.scaleLinear().domain(yExtent).range([chartHeight, 0]);
+
+                        let leftAxis = d3.axisLeft(yScale);
+                        let leftGridlines = d3.axisLeft(yScale)
+                        .tickSize(-chartWidth-10)
+                        .tickFormat("");
+
+                        let bottomAxis = d3.axisBottom(yScale);
+                        let bottomGridlines = d3.axisBottom(yScale)
+                        .tickSize(-chartHeight-10)
+                        .tickFormat('');
+
+                        scatterLabels.append('g')
+                        .attr('class', 'y axis')
+                        .attr('transform', `translate(${margin.left-10},${margin.top})`)
+                        .call(leftAxis);
+
+                        scatterLabels.append('g')
+                        .attr('class', 'y gridlines')
+                        .attr('transform', `translate(${margin.left-10},${margin.top})`)
+                        .call(leftGridlines);
+
+                        scatterLabels.append('g')
+                        .attr('class', 'x axis')
+                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`)
+                        .call(bottomAxis);
+
+                        scatterLabels.append('g')
+                        .attr('class', 'x gridlines')
+                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`)
+                        .call(bottomGridlines);
+
+                        let points = scatterChart.selectAll('circle')
+                        .data(data)
+                        .join('circle')
+                        .attr('cx', d => calorieScale(d['Calories']))
+                        .attr('cy', d => yScale(d[yname]))
+                        .attr('r', 7)
+                        .style('opacity', 0.7)
+
+                        scatterChart.append("text")
+                            .attr("class", "x label")
+                            .attr("text-anchor", "end")
+                            .attr("x", chartWidth / 2)
+                            .attr("y", chartHeight + 200)
+                            .text("Year");
+
+                        scatterChart.append("text")
+                            .attr("class", "y label")
+                            .attr("text-anchor", "middle")
+                            .attr("x", -chartHeight/2)
+                            .attr("y", -150)
+                            .attr("transform", "rotate(-90)")
+                            .text("Number of Ratings");
+
+                        scatterChart.append("text")
+                            .attr("class", "title")
+                            .attr("text-anchor", "end")
+                            .attr("x", chartWidth / 2 + margin.left/2)
+                            .attr("y", 200)
+                            .text("Title");
+                    }
+                    
+
+                }; 
+
+                requestData(); 
+
+                function searchFilter() {
+                    let input = document.getElementById('searchbar').value.toLowerCase();
+                    let lst = document.getElementById('menuItems');
+                    let lstItems = document.getElementsByTagName('li');
+                    
+                    if (input){
+                        if (lst.getAttribute('hidden')){
+                            lst.removeAttribute('hidden');
+                        }
+                        for (i = 0; i < lstItems.length; i++) {
+                            text = lstItems[i].textContent;
+                            if (text.toLowerCase().includes(input)) {
+                                lstItems[i].style.display = "";
+                            } else {
+                                lstItems[i].style.display = "none";
+                            }
+                        }
+                    } else {
+                        lst.setAttribute ('hidden', 'hidden');
+                    }
+                }
+
+                
+            
+            </script>
+        </div>
+    </body>
+</html>
