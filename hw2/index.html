@@ -66,7 +66,7 @@
     </style>
 
     <body>
-        <div>
+        <div style="margin:10px;">
             <div class="categories">
                 <button id="all">All</button>
                 <button id="breakfast">Breakfast</button>
@@ -105,7 +105,8 @@
             <svg id="pie" height="500" width="500">
                 <text id = 'pieTitle' x='250' y = '15' text-anchor='middle' alignment-baseline='center'></text>
             </svg>
-            
+            <br><br><br>
+            <a href="https://www.kaggle.com/datasets/mcdonalds/nutrition-facts/data">dataset</a>
             
 
             <script>
@@ -336,7 +337,8 @@
                             .attr("x", chartWidth / 2 + 50)
                             .attr("y", chartHeight + 75)
                             .style('font-size', '15px')
-                            .text(scatterXName);
+                            .text(`${scatterXName} + (kcals)`)
+                            // .text(scatterXName + " (kcals)");
 
                     
                     d3.select("#scatterY")
@@ -416,18 +418,19 @@
                                 .text("")
                         })
                         .on('click', function(e) {
-                            let d = d3.select(this).datum()
+                            let d = d3.select(this).datum();
                             updateNutritionData(d);
                             itemSelected = d.Item;
+                            document.getElementById('searchbar').value = d.Item;
                             updatePie();
                         })
 
-                        d3.select("#scatterY").text(scatterYName);
-                        d3.select("#scatterX").text(scatterXName);
+                        let yUnit = scatterYName==="Sodium"? "(mg)" : "(g)"; 
+
+                        d3.select("#scatterY").text(`${scatterYName} ${yUnit}`);
+                        d3.select("#scatterX").text(`${scatterXName} (kcals)`);
                         d3.select("#scatterTitle").text(categorySelected);
                     }
-                    
-
                 }; 
 
                 requestData(); 
