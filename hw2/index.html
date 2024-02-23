@@ -4,26 +4,23 @@
 
 
     <style>
-            .categories button {
+            button {
                 background-color: #04AA6D; 
                 border: 1px solid green; 
                 color: white; 
                 padding: 10px 24px; 
                 cursor: pointer; 
                 float: left; 
+                opacity: 0.7;
             }
 
-            .categories button:not(:last-child) {
-                border-right: none; 
-            }
-
-            .categories button:after {
+            button:after {
                 content: "";
                 clear: both;
                 display: table;
             }
 
-            .categories button:hover {
+            button:hover {
                 background-color: #3e8e41;
             }
 
@@ -71,6 +68,7 @@
     <body>
         <div>
             <div class="categories">
+                <button id="all">All</button>
                 <button id="breakfast">Breakfast</button>
                 <button id="coffee">Coffee & Tea</button>
                 <button id="smoothies">Smoothies & Shakes</button>
@@ -81,6 +79,15 @@
                 <button id="snacks">Snacks & Sides</button>
                 <button id="desserts">Desserts</button>
             </div>
+            <br><br><br>
+            <div class="yaxis">
+                <button id="carbohydrates">Carbohydrates (g)</button>
+                <button id="protein">Protein (g)</button>
+                <button id="fat">Total Fat (g)</button>
+                <button id="sodium">Sodium (mg)</button>
+                <button id="sugars">Sugars (g)</button>
+                <button id="fiber">Fiber (g)</button>
+            </div>
             <br><br><br><br>
             <div class="search">
                 <input type="text" id="searchbar" onkeyup="searchFilter()" placeholder="Search menu">
@@ -89,10 +96,14 @@
             </div>
             <br><br>
             <svg id="scatter" height="500" width="500">
-                <text id = 'scatterText' x='400' y = '35' text-anchor='end' alignment-baseline='middle'></text>
+                <text id = 'scatterText' x='250' y = '35' text-anchor='middle' alignment-baseline='center'></text>
+                <text id= 'scatterX' text-anchor="middle"></text>
+                <text id= 'scatterY' text-anchor="middle"></text>
+                <text id = 'scatterTitle' x='250' y = '15' text-anchor='middle' alignment-baseline='center'></text>
             </svg>
             
             <svg id="pie" height="500" width="500">
+                <text id = 'pieTitle' x='250' y = '15' text-anchor='middle' alignment-baseline='center'></text>
             </svg>
             
             
@@ -111,26 +122,18 @@
                 const pieRadius = chartWidth/2 - 10;
                 const donutTranslateX = width/2; 
                 const pieChart = svg.append('g').attr('transform', 'translate('+donutTranslateX+','+donutTranslateX+')');
-                
-                const breakfast = document.getElementById("breakfast");
-                const coffee = document.getElementById("coffee");
-                const smoothies = document.getElementById("smoothies");
-                const chicken = document.getElementById("chicken");
-                const beverages = document.getElementById("beverages");
-                const beef = document.getElementById("beef");
-                const salads = document.getElementById("salads");
-                const snacks = document.getElementById("snacks");
-                const desserts = document.getElementById("desserts");
+            
 
                 const requestData = async function() {
 
                     const data = await d3.csv("menu.csv", d3.autoType);
                     filteredData = data;
                     var scatterXName = "Calories";
-                    var scatterYName = "Sodium"
+                    var scatterYName = "Sodium"; 
+                    var categorySelected = "All";
+                    var itemSelected = data[0].Item;
 
                     console.log(data);
-
 
                     categories = {
                         "Breakfast": [],
@@ -146,9 +149,6 @@
 
                     data.forEach ( d => {
                         categories[d.Category].push(d);
-                        d['grams'] = d['Serving Size'].match(/\((.*)\)/);
-                        // if (d['grams'] === null) console.log(d['Serving Size'])
-                        // console.log(d['grams']);
                     });
 
                     var items = data.map( d => d.Item );
@@ -164,6 +164,10 @@
                     var colorScale = d3.scaleOrdinal()
                     .domain(Object.keys(nutritionData))
                     .range(d3.schemeSet2);
+
+                    d3.select("#pieTitle")
+                        .style('font-size', 17)
+                        .text(itemSelected);
 
                     updateNutritionData(data[0]);
 
@@ -209,6 +213,9 @@
                         .attr("transform", function(d) { return "translate(" + arcGenerator.centroid(d) + ")";  })
                         .style("text-anchor", "middle")
                         .style("font-size", 17)
+
+                        d3.select("#pieTitle")
+                            .text(itemSelected);
                     }
 
                     function searchBarClicked (e) {
@@ -218,23 +225,51 @@
                         let lst = document.getElementById('menuItems');
                         lst.setAttribute('hidden', 'hidden');
                         updateNutritionData(data.filter(d => d.Item === name)[0]);
+                        itemSelected = name;
                         updatePie();
                     }
 
-                    breakfast.addEventListener('click', function () {categoryButtonClicked('Breakfast')});
-                    coffee.addEventListener('click', function (){categoryButtonClicked('Coffee & Tea')});
-                    smoothies.addEventListener('click', function (){categoryButtonClicked('Smoothies & Shakes')});
-                    chicken.addEventListener('click', function (){categoryButtonClicked('Chicken & Fish')});
-                    beverages.addEventListener('click', function (){categoryButtonClicked('Beverages')});
-                    beef.addEventListener('click', function (){categoryButtonClicked('Beef & Pork')});
-                    salads.addEventListener('click', function (){categoryButtonClicked('Salads')});
-                    snacks.addEventListener('click', function (){categoryButtonClicked('Snacks & Sides')});
-                    desserts.addEventListener('click', function (){categoryButtonClicked('Desserts')});
+                    let allbutton = document.getElementById("all");
+                    let breakfast = document.getElementById("breakfast");
+                    let coffee = document.getElementById("coffee");
+                    let smoothies = document.getElementById("smoothies");
+                    let chicken = document.getElementById("chicken");
+                    let beverages = document.getElementById("beverages");
+                    let beef = document.getElementById("beef");
+                    let salads = document.getElementById("salads");
+                    let snacks = document.getElementById("snacks");
+                    let desserts = document.getElementById("desserts");
 
+                    let categoryButtons = [allbutton, breakfast, coffee, smoothies, chicken, beverages, beef, salads, snacks, desserts]
 
-                    function categoryButtonClicked (name) {
-                        document.getElementById('searchbar').value = "";
-                        filteredData = data.filter( d => d.Category === name);
+                    allbutton.addEventListener('click', function () {categoryButtonClicked(this, 'all')});
+                    breakfast.addEventListener('click', function () {categoryButtonClicked(this, 'Breakfast')});
+                    coffee.addEventListener('click', function (){categoryButtonClicked(this, 'Coffee & Tea')});
+                    smoothies.addEventListener('click', function (){categoryButtonClicked(this, 'Smoothies & Shakes')});
+                    chicken.addEventListener('click', function (){categoryButtonClicked(this, 'Chicken & Fish')});
+                    beverages.addEventListener('click', function (){categoryButtonClicked(this, 'Beverages')});
+                    beef.addEventListener('click', function (){categoryButtonClicked(this, 'Beef & Pork')});
+                    salads.addEventListener('click', function (){categoryButtonClicked(this, 'Salads')});
+                    snacks.addEventListener('click', function (){categoryButtonClicked(this, 'Snacks & Sides')});
+                    desserts.addEventListener('click', function (){categoryButtonClicked(this, 'Desserts')});
+                    
+                    allbutton.style.opacity = 1;
+                    allbutton.style.borderColor = "red";
+
+                    function categoryButtonClicked (e, name) {
+                        categoryButtons.forEach ( d => {
+                            d.style.opacity = 0.7; 
+                            d.style.borderColor = "green";
+                        })
+                        e.style.opacity = 1;
+                        e.style.borderColor = "red";
+                        category = name;
+                        // document.getElementById('searchbar').value = "";
+                        if (name === 'all') {
+                            filteredData = data;
+                        } else {
+                            filteredData = data.filter( d => d.Category === name);
+                        }
                         updateScatter(scatterXName, scatterYName);
                     }
 
@@ -243,6 +278,36 @@
                             nutritionData[k] = item[k]; 
                         })
                         nutritionData['Carbohydrates'] -= nutritionData["Dietary Fiber"] - nutritionData["Sugars"]; // assume carbs included the two
+                    }
+
+                    let carbohydrates = document.getElementById("carbohydrates"); 
+                    let protein = document.getElementById("protein");
+                    let fat = document.getElementById("fat");
+                    let sodium = document.getElementById("sodium");
+                    let sugars = document.getElementById("sugars");
+                    let fiber = document.getElementById("fiber");
+
+                    let yaxisButtons = [carbohydrates, protein, fat, sodium, sugars, fiber];
+
+                    carbohydrates.addEventListener('click', function () {yaxisButtonClicked(this, 'Carbohydrates')});
+                    protein.addEventListener('click', function () {yaxisButtonClicked(this, 'Protein')});
+                    fat.addEventListener('click', function () {yaxisButtonClicked(this, 'Total Fat')});
+                    sodium.addEventListener('click', function () {yaxisButtonClicked(this, 'Sodium')});
+                    sugars.addEventListener('click', function () {yaxisButtonClicked(this, 'Sugars')});
+                    fiber.addEventListener('click', function () {yaxisButtonClicked(this, 'Dietary Fiber')});
+
+                    sodium.style.opacity = 1;
+                    sodium.style.borderColor = "red";
+
+                    function yaxisButtonClicked (e, xname) {
+                        yaxisButtons.forEach ( d => {
+                            d.style.opacity = 0.7; 
+                            d.style.borderColor = "green";
+                        })
+                        e.style.opacity = 1;
+                        e.style.borderColor = "red";
+                        scatterYName = xname; 
+                        updateScatter();
                     }
 
                     let scatterLabels = scatter.append('g')
@@ -267,14 +332,32 @@
                     let scatterChart = scatter.append('g')
                                 .attr('transform',`translate(${margin.left},${margin.top})`);
 
+                    d3.select("#scatterX")
+                            .attr("x", chartWidth / 2 + 50)
+                            .attr("y", chartHeight + 75)
+                            .style('font-size', '15px')
+                            .text(scatterXName);
+
+                    
+                    d3.select("#scatterY")
+                            .attr("x", -chartHeight/2 - 50)
+                            .attr("y", 25)
+                            .style("font-size", "15px")
+                            .attr("transform", "rotate(-90)")
+                            .text(scatterYName);
+
+                    d3.select("#scatterTitle")
+                        .style("font-size", 17)
+                        .text(categorySelected);
+
                     updateScatter(scatterXName, scatterYName);
 
 
-                    function updateScatter (xname, yname){
-                        const xExtent = d3.extent(filteredData, d => d[xname] );
+                    function updateScatter (){
+                        const xExtent = d3.extent(filteredData, d => d[scatterXName] );
                         const xScale = d3.scaleLinear().domain(xExtent).range([0, chartWidth]);
 
-                        const yExtent = d3.extent(filteredData, d => d[yname]);
+                        const yExtent = d3.extent(filteredData, d => d[scatterYName]);
                         const yScale = d3.scaleLinear().domain(yExtent).range([chartHeight, 0]);
 
                         let leftAxis = d3.axisLeft(yScale);
@@ -299,8 +382,8 @@
                         .data(filteredData)
                         .join('circle')
                         .attr('class', 'dot')
-                        .attr('cx', d => xScale(d[xname]))
-                        .attr('cy', d => yScale(d[yname]))
+                        .attr('cx', d => xScale(d[scatterXName]))
+                        .attr('cy', d => yScale(d[scatterYName]))
                         .attr('r', 7)
                         .attr('stroke-width', 0)
                         .attr('fill', 'blue')
@@ -333,26 +416,15 @@
                                 .text("")
                         })
                         .on('click', function(e) {
-                            updateNutritionData(d3.select(this).datum());
+                            let d = d3.select(this).datum()
+                            updateNutritionData(d);
+                            itemSelected = d.Item;
                             updatePie();
                         })
 
-                        scatterChart.append("text")
-                            .attr("class", "x label")
-                            .attr("text-anchor", "end")
-                            .attr("x", chartWidth / 2)
-                            .attr("y", chartHeight + 50)
-                            .style('font-size', '15px')
-                            .text(scatterXName);
-
-                        scatterChart.append("text")
-                            .attr("class", "y label")
-                            .attr("text-anchor", "middle")
-                            .attr("x", -chartHeight/2)
-                            .attr("y", -60)
-                            .style("font-size", "15px")
-                            .attr("transform", "rotate(-90)")
-                            .text(scatterYName);
+                        d3.select("#scatterY").text(scatterYName);
+                        d3.select("#scatterX").text(scatterXName);
+                        d3.select("#scatterTitle").text(categorySelected);
                     }
                     
 
