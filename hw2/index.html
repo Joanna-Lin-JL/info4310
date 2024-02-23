@@ -88,11 +88,11 @@
                 </ul>
             </div>
             <br><br>
-            <svg id="scatter" height="800" width="800">
-                <text id = 'scatterText' x='700' y = '35' text-anchor='end' alignment-baseline='hanging'></text>
+            <svg id="scatter" height="500" width="500">
+                <text id = 'scatterText' x='400' y = '35' text-anchor='end' alignment-baseline='middle'></text>
             </svg>
             
-            <svg id="pie" height="800" width="800">
+            <svg id="pie" height="500" width="500">
             </svg>
             
             
@@ -102,7 +102,7 @@
                 const scatter = d3.select('svg#scatter');
                 const width = svg.attr('width');
                 const height = svg.attr('height'); 
-                const margin = {top: 50, right:10, bottom: 100, left:100}; 
+                const margin = {top: 30, right:10, bottom: 80, left:80}; 
                 const chartWidth = width - margin.left - margin.right; 
                 const chartHeight = height - margin.top - margin.bottom; 
 
@@ -245,11 +245,27 @@
                         nutritionData['Carbohydrates'] -= nutritionData["Dietary Fiber"] - nutritionData["Sugars"]; // assume carbs included the two
                     }
 
-                    let scatterChart = scatter.append('g')
-                                    .attr('transform',`translate(${margin.left},${margin.top})`);
-
                     let scatterLabels = scatter.append('g')
                                     .attr('id', 'scatterLabels');
+
+                    let yaxis = scatterLabels.append('g')
+                        .attr('class', 'y axis')
+                        .attr('transform', `translate(${margin.left-10},${margin.top})`);
+
+                    let ygridlines = scatterLabels.append('g')
+                        .attr('class', 'y gridlines')
+                        .attr('transform', `translate(${margin.left-10},${margin.top})`);
+
+                    let xaxis = scatterLabels.append('g')
+                        .attr('class', 'x axis')
+                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`);
+
+                    let xgridlines = scatterLabels.append('g')
+                        .attr('class', 'x gridlines')
+                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`);
+
+                    let scatterChart = scatter.append('g')
+                                .attr('transform',`translate(${margin.left},${margin.top})`);
 
                     updateScatter(scatterXName, scatterYName);
 
@@ -271,25 +287,13 @@
                         .tickSize(-chartHeight-10)
                         .tickFormat('');
 
-                        scatterLabels.append('g')
-                        .attr('class', 'y axis')
-                        .attr('transform', `translate(${margin.left-10},${margin.top})`)
-                        .call(leftAxis);
+                        yaxis.call(leftAxis);
+                                
+                        ygridlines.call(leftGridlines);
 
-                        scatterLabels.append('g')
-                        .attr('class', 'y gridlines')
-                        .attr('transform', `translate(${margin.left-10},${margin.top})`)
-                        .call(leftGridlines);
-
-                        scatterLabels.append('g')
-                        .attr('class', 'x axis')
-                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`)
-                        .call(bottomAxis);
-
-                        scatterLabels.append('g')
-                        .attr('class', 'x gridlines')
-                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`)
-                        .call(bottomGridlines);
+                        xaxis.call(bottomAxis);
+                                
+                        xgridlines.call(bottomGridlines);
 
                         let points = scatterChart.selectAll('circle.dot')
                         .data(filteredData)
@@ -314,6 +318,7 @@
                                 
                             d3.select('#scatterText')
                                 .text(item)
+                                .raise();
                         })
                         .on('mouseout', function(e) {
                             d3.select(this)
@@ -337,7 +342,7 @@
                             .attr("text-anchor", "end")
                             .attr("x", chartWidth / 2)
                             .attr("y", chartHeight + 50)
-                            .style('font-size', '20px')
+                            .style('font-size', '15px')
                             .text(scatterXName);
 
                         scatterChart.append("text")
@@ -345,7 +350,7 @@
                             .attr("text-anchor", "middle")
                             .attr("x", -chartHeight/2)
                             .attr("y", -60)
-                            .style("font-size", "20px")
+                            .style("font-size", "15px")
                             .attr("transform", "rotate(-90)")
                             .text(scatterYName);
                     }
