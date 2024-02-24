@@ -264,7 +264,7 @@
                         })
                         e.style.opacity = 1;
                         e.style.borderColor = "red";
-                        category = name;
+                        categorySelected = name;
                         // document.getElementById('searchbar').value = "";
                         if (name === 'all') {
                             filteredData = data;
@@ -320,7 +320,8 @@
 
                     let ygridlines = scatterLabels.append('g')
                         .attr('class', 'y gridlines')
-                        .attr('transform', `translate(${margin.left-10},${margin.top})`);
+                        .attr('transform', `translate(${margin.left-10},${margin.top})`)
+                        .lower();
 
                     let xaxis = scatterLabels.append('g')
                         .attr('class', 'x axis')
@@ -328,7 +329,8 @@
 
                     let xgridlines = scatterLabels.append('g')
                         .attr('class', 'x gridlines')
-                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`);
+                        .attr('transform', `translate(${margin.left},${chartHeight+margin.top+10})`)
+                        .lower();
 
                     let scatterChart = scatter.append('g')
                                 .attr('transform',`translate(${margin.left},${margin.top})`);
@@ -351,6 +353,9 @@
                     d3.select("#scatterTitle")
                         .style("font-size", 17)
                         .text(categorySelected);
+
+                    d3.select('#scatterText').style.fontSize = 10;
+                        
 
                     updateScatter(scatterXName, scatterYName);
 
@@ -403,7 +408,7 @@
                                 
                             d3.select('#scatterText')
                                 .text(item)
-                                .raise();
+                                .lower();
                         })
                         .on('mouseout', function(e) {
                             d3.select(this)
@@ -416,6 +421,7 @@
                                 
                             d3.select('#scatterText')
                                 .text("")
+                                .lower();
                         })
                         .on('click', function(e) {
                             let d = d3.select(this).datum();
