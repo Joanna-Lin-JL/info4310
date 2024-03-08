@@ -1,21 +1,306 @@
 <html>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
 
 
     <style>
+        .outline{
+            fill: none; 
+            stroke: black; 
+            stroke-width: 1px; 
+        }
+
+        .neighborhoods{
+            fill: rgb(229, 229, 229); 
+            stroke: none; 
+            cursor: grab;
+        }
+        
+        .place {
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #04AA6D; 
+            border: 1px solid green; 
+            color: white; 
+            padding: 10px 24px; 
+            cursor: pointer; 
+            float: left; 
+            opacity: 0.7;
+        }
+
+        button:after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+
+        button:hover {
+            background-color: #3e8e41;
+        }
+
+        #panel {
+            height:400px; 
+            width:400px; 
+            float:left; 
+            padding: 20 30 20 20;
+        }
+        
+        #panel h5 {
+            margin:0;
+            padding:0;
+        }
+
 
     </style>
 
     <body>
         <div style="margin:10px;">
-            <text>Placeholder</text>
+            <button id="reset">Reset</button>
+            <br><br><br>
+            <div class="types">
+                <button id="all">All</button>
+                <button id="food">food</button>
+                <button id="nightlife">nightlife</button>
+                <button id="arts">arts</button>
+                <button id="shopping">shopping</button>
+                <button id="active">active</button>
+            </div>
+            <br><br><br>
+            <div>
+                <label for="rating">0</label>
+                <input type="range" id="rating" name="rating" min="0" max="5" value="0" step="0.5" />
+                <label for="rating">5 (minimum rating)</label>
+            </div>
+            <br>
+            <div>
+                <label for="review">0</label>
+                <input type="range" id="review" name="review" min="0" max="1000" value="0" step="100" />
+                <label for="review">1000 (minimum, increment by 100)</label>
+            </div>
+            <br>
+            <svg id="whole" height="800" width="1200" style="background: #fff; margin-top:50px" >
+                <g id="map" height="800" width="800"></g>
+            </svg>
+            <div id="panel">
+            </div>
 
             <script>
+
+                let svg = d3.select('svg g#map');
+                const width = svg.attr('width');
+                const height = svg.attr('height'); 
+                const margin = {top: 10, right: 10, bottom: 100, left: 100};
+                const mapWidth = width - margin.right - margin.left; 
+                const mapHeight = height - margin.top - margin.bottom;
+                const map = svg.append('g').attr('transform', 'translate('+margin.left+','+margin.top+')');
                 
 
+                svg.append("defs").append("clipPath")
+                      .attr("id","mapClip")
+                      .append("rect").attr("x",0)
+                                     .attr("y",0)
+                                     .attr("width",mapWidth)
+                                     .attr("height",mapHeight);
+
+                map.attr("clip-path","url(#mapClip)");
                 
-            
+                const requestData = async () => {
+                    var data = await d3.csv("yelp_pittsburgh.csv", d3.autoType);
+                    let pitts = await d3.json('pittsburgh_neighborhoods.json', d3.autoType);
+                    var displayData = data;
+                    var typeSelected = 'all';
+                    var ratingSelected = 0;
+                    var reviewSelected = 0;
+
+                    var neighborhoods = topojson.feature(pitts, pitts.objects.Neighborhoods_);
+                    var neighborhoodsMesh = topojson.mesh(pitts, pitts.objects.Neighborhoods_); 
+                    var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], neighborhoods);
+                    var path = d3.geoPath().projection(projection);  
+
+                    let zipPaths = map.selectAll('path.neighborhoods').data(neighborhoods.features)
+                        .join('path')
+                        .attr('class', 'neighborhoods')
+                        .attr('d', path);
+                        // .on('click', function(event, d) {
+                        //     let bounds = path.bounds(d.geometry);
+                        //     let dx = bounds[1][0] - bounds[0][0];
+                        //     let dy = bounds[1][1] - bounds[0][1];
+
+                        //     let x = (bounds[0][0] + bounds[1][0]) / 2;
+                        //     let y = (bounds[0][1] + bounds[1][1]) / 2;
+                        //     let scale = 0.8 * Math.max(1, Math.min(10, 0.9 / Math.max(dx / mapWidth,
+                        //         dy / mapHeight))); 
+                        //     console.log(scale);
+
+                        //     let translate = [mapWidth / 2 - x * scale, mapHeight / 2 - y * scale];
+                        //     // do transformation by the scale and translate as indicated
+                        //     let newTransform = d3.zoomIdentity
+                        //         .translate(translate[0], translate[1])
+                        //         .scale(scale);
+
+                        //     map.transition().duration(1000).call(plotZoom.transform, newTransform);
+                        // });
+
+                    map.append('path').datum(neighborhoodsMesh)
+                        .attr('class', 'outline')
+                        .attr('d', path);
+
+                    data.forEach ( d => {
+                        positions = projection([d.longitude, d.latitude]);
+                        d[0] = positions[0];
+                        d[1] = positions[1];
+
+                    })
+
+                    console.log(data);
+                    console.log(pitts);
+
+                    const typeScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+                    const reviewExtent = d3.extent(data, d => d['review count']);
+
+                    let viewport = map.append('g');
+
+                    function updatePoints () {
+                        let circles = viewport.selectAll('circle.place')
+                                            .data(displayData)
+                                            .join('circle')
+                                            .attr('class', 'place')
+                                            .attr('cx', d => d[0])
+                                            .attr('cy', d => d[1])
+                                            .attr('r', 6)
+                                            .attr('fill', d => typeScale(d.type))
+                                            .attr("opacity", 0.8)
+                                            .on('click', function(){
+                                                dat = d3.select(this).datum()
+                                                updatePanel({});
+                                                updatePanel(dat);
+                                            });
+                    }
+
+                    let circles = viewport.selectAll('circle.place');
+                    updatePoints();
+
+                    // map.append("rect")
+                    //     .attr("x",0)
+                    //     .attr("y",0)
+                    //     .attr("width",mapWidth)
+                    //     .attr("height",mapHeight)
+                    //     .attr("fill","none")
+                    //     .style("pointer-events","all");
+
+                    let allbutton = document.getElementById("all");
+                    let food = document.getElementById("food");
+                    let nightlife = document.getElementById("nightlife");
+                    let arts = document.getElementById("arts");
+                    let shopping = document.getElementById("shopping");
+                    let active = document.getElementById("active");
+
+                    allbutton.addEventListener('click', function () {typesClicked(this, 'all')});
+                    food.addEventListener('click', function () {typesClicked(this, 'food')});
+                    nightlife.addEventListener('click', function (){typesClicked(this, 'nightlife')});
+                    arts.addEventListener('click', function (){typesClicked(this, 'arts')});
+                    shopping.addEventListener('click', function (){typesClicked(this, 'shopping')});
+                    active.addEventListener('click', function (){typesClicked(this, 'active')});
+
+                    let typebuttons = [allbutton, food, nightlife, arts, shopping, active];
+
+                    function typesClicked (e, name){
+                        typebuttons.forEach ( d => {
+                            d.style.opacity = 0.7; 
+                            d.style.borderColor = "green";
+                        })
+                        e.style.opacity = 1;
+                        e.style.borderColor = "red";
+
+                        if (name === 'all') {
+                            displayData = data.filter(d => {return d.rating >= ratingSelected && d['review count'] >= reviewSelected});
+                        } else {
+                            displayData = data.filter(d => {return d.rating >= ratingSelected && d.type == name && d['review count'] >= reviewSelected});
+                        }
+
+                        typeSelected = name;
+                        updatePoints();
+                    }
+                        
+
+                    let zoomExtent = [[0,0],[mapWidth,mapHeight]];
+                    let translateExtent = [[-50,-50],[mapWidth+50,mapHeight+50]];
+                    var plotZoom = d3.zoom()
+                                    .extent(zoomExtent)
+                                    .translateExtent(translateExtent)
+                                    .scaleExtent([1,5])
+                                    .on("zoom", plotZoomed);
+                    map.call(plotZoom);
+                    
+                    function plotZoomed( { transform } ) {
+                        circles.attr("r", 6 / transform.k);
+                        map.attr("transform", transform.toString());
+                        map.select("outline").style("stroke-width", 1 / transform.k);
+
+                    }
+
+                    map.call(plotZoom.transform, d3.zoomIdentity); 
+                    document.getElementById("reset").addEventListener('click', function (){
+                        map.call(plotZoom.transform, d3.zoomIdentity); 
+                        displayData = data; 
+                        updatePoints();
+                    });
+
+                    const ratingSlider = d3.select('input#rating');
+
+                    ratingSlider.on('change', function () {
+                        if (typeSelected == "all"){
+                            displayData = data.filter(d => {return d.rating >= this.value && d['review count'] >= reviewSelected});
+                        } else {
+                            displayData = data.filter(d => {return d.rating >= this.value && d.type == typeSelected && d['review count'] >= reviewSelected});     
+                        }
+                        ratingSelected = this.value;
+                        updatePoints();
+                    });
+
+                    const reviewSlider = d3.select('input#review');
+
+                    reviewSlider.on('change', function () {
+                        if (typeSelected == "all"){
+                            displayData = data.filter(d => {return d.rating >= ratingSelected && d['review count'] >= this.value});
+                        } else {
+                            displayData = data.filter(d => {return d.rating >= ratingSelected && d.type == typeSelected && d['review count'] >= this.value});     
+                        }
+                        reviewSelected = this.value;
+                        updatePoints();
+                    });
+
+                    let header = d3.select("#panel").append("h5");
+                    let table = d3.select("#panel").append("table");
+
+                    updatePanel({});
+                    
+                    function updatePanel(row) {
+                        
+                        let rowCopy = Object.assign({},row); 
+                        let title = rowCopy.title;
+                        delete rowCopy.title;
+                        header.text(title);
+                        
+                        let kvPairs = Object.entries(rowCopy).slice(2);
+                        
+                        let rows = table.selectAll("tr").data(kvPairs)
+                                        .join( enter => enter.append("tr"),
+                                                update => update.selectAll("td").remove(), 
+                                                exit => exit.remove() );
+                        
+                        rows.append("td").append("strong").text( d => d[0] );
+                        rows.append("td").text( d => d[1] );
+                    }
+
+                }
+                
+                requestData();
+
             </script>
         </div>
     </body>
