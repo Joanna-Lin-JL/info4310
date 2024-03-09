@@ -41,16 +41,24 @@
             background-color: #3e8e41;
         }
 
+        input:hover {
+            cursor: grab;
+        }
+
         #panel {
             height:400px; 
-            width:400px; 
+            width:300px; 
             float:left; 
-            padding: 20 30 20 20;
+            padding: 0 30 20 20;
         }
         
         #panel h5 {
             margin:0;
             padding:0;
+        }
+
+        #panel table {
+            width: 70%;
         }
 
 
@@ -78,24 +86,34 @@
             <div>
                 <label for="review">0</label>
                 <input type="range" id="review" name="review" min="0" max="1000" value="0" step="100" />
-                <label for="review">1000 (minimum, increment by 100)</label>
+                <label for="review">1000 (minimum number of reviews, increment by 100)</label>
             </div>
             <br>
-            <svg id="whole" height="800" width="1200" style="background: #fff; margin-top:50px" >
-                <g id="map" height="800" width="800"></g>
-            </svg>
             <div id="panel">
             </div>
+            <svg id="whole" height="800" width="1200" style="background: #fff; margin-left: 300px;" >
+                <g id="map" height="800" width="800"></g>
+            </svg>
+            
 
             <script>
 
                 let svg = d3.select('svg g#map');
                 const width = svg.attr('width');
                 const height = svg.attr('height'); 
-                const margin = {top: 10, right: 10, bottom: 100, left: 100};
+                const margin = {top: 10, right: 100, bottom: 100, left: 100};
                 const mapWidth = width - margin.right - margin.left; 
                 const mapHeight = height - margin.top - margin.bottom;
                 const map = svg.append('g').attr('transform', 'translate('+margin.left+','+margin.top+')');
+                let allbutton = document.getElementById("all");
+                let food = document.getElementById("food");
+                let nightlife = document.getElementById("nightlife");
+                let arts = document.getElementById("arts");
+                let shopping = document.getElementById("shopping");
+                let active = document.getElementById("active");
+                let ratingSlider = d3.select('input#rating');
+                let reviewSlider = d3.select('input#review');
+
                 
 
                 svg.append("defs").append("clipPath")
@@ -192,13 +210,7 @@
                     //     .attr("fill","none")
                     //     .style("pointer-events","all");
 
-                    let allbutton = document.getElementById("all");
-                    let food = document.getElementById("food");
-                    let nightlife = document.getElementById("nightlife");
-                    let arts = document.getElementById("arts");
-                    let shopping = document.getElementById("shopping");
-                    let active = document.getElementById("active");
-
+                    
                     allbutton.addEventListener('click', function () {typesClicked(this, 'all')});
                     food.addEventListener('click', function () {typesClicked(this, 'food')});
                     nightlife.addEventListener('click', function (){typesClicked(this, 'nightlife')});
@@ -245,12 +257,19 @@
 
                     map.call(plotZoom.transform, d3.zoomIdentity); 
                     document.getElementById("reset").addEventListener('click', function (){
+                        typebuttons.forEach ( d => {
+                            d.style.opacity = 0.7; 
+                            d.style.borderColor = "green";
+                        })
+                        ratingSlider.value = 0;
+                        reviewSlider.value = 0;
+                        ratingSelected = 0; 
+                        reviewSelected = 0;
+                        console.log(ratingSlider.value);
                         map.call(plotZoom.transform, d3.zoomIdentity); 
                         displayData = data; 
                         updatePoints();
                     });
-
-                    const ratingSlider = d3.select('input#rating');
 
                     ratingSlider.on('change', function () {
                         if (typeSelected == "all"){
@@ -261,8 +280,6 @@
                         ratingSelected = this.value;
                         updatePoints();
                     });
-
-                    const reviewSlider = d3.select('input#review');
 
                     reviewSlider.on('change', function () {
                         if (typeSelected == "all"){
@@ -276,6 +293,7 @@
 
                     let header = d3.select("#panel").append("h5");
                     let table = d3.select("#panel").append("table");
+                    d3.select("#panel").raise();
 
                     updatePanel({});
                     
@@ -284,7 +302,7 @@
                         let rowCopy = Object.assign({},row); 
                         let title = rowCopy.title;
                         delete rowCopy.title;
-                        header.text(title);
+                        header.text(name);
                         
                         let kvPairs = Object.entries(rowCopy).slice(2);
                         
