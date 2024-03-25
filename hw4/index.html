@@ -1,0 +1,129 @@
+<html>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+
+
+    <style>
+        
+
+    </style>
+
+    <body>
+        <div style="margin:10px;">
+            <svg id="dog" height="700" width="800" >
+            </svg>
+            <svg id="cat" height="700" width="800" >
+            </svg>
+            <svg id="dogbreed" height="700" width="800">
+            </svg>
+            <svg id="catbreed" height="700" width="800">
+            </svg>
+            
+            
+
+            <script>
+                let dogsvg = d3.select('#dog');
+                let catsvg = d3.select('#cat');
+                let dogbreedsvg = d3.select('#dogbreed');
+                let catbreedsvg = d3.select('#catbreed');
+                // let svgs = [dogsvg, catsvg, dogbreedsvg, catbreedsvg];
+                let svgs = [dogsvg, catsvg];
+                const width = dogsvg.attr('width');
+                const height = dogsvg.attr('height'); 
+                const margin = {top: 10, right: 100, bottom: 100, left: 100};
+                const graphWidth = width - margin.right - margin.left; 
+                const graphHeight = height - margin.top - margin.bottom;
+                let graphs = svgs.map(d => {return d.append('g').attr('transform', 'translate('+margin.left+','+margin.top+')');} );
+                
+                const requestData = async () => {
+                    var dogData = await d3.csv("dog.csv", d3.autoType);
+                    var catData = await d3.csv("cat.csv", d3.autoType);
+                    var dogBreedData = await d3.csv("dog_breed.csv", d3.autoType);
+                    var catBreedData = await d3.csv("cat_breed.csv", d3.autoType);
+                    // data = [dogData, catData, dogBreedData, catBreedData];
+                    let data = [dogData, catData];
+                    let breedData = [dogBreedData, catBreedData];
+
+                    console.log(data);
+
+                    graphs.forEach ( (g, i) => {
+                        let dat = data[i].slice(0, 7);
+                        let extent = d3.extent(dat, d => d['Number'])
+                        let scale = d3.scaleLinear().domain([0, extent[1]]).range([0, graphWidth]);
+
+                        g.append('g')
+                        .attr("transform", `translate(0, ${graphHeight})`)
+                        .call(d3.axisBottom(scale))
+                        .selectAll("text")
+                        .attr("transform", "translate(-10,0)rotate(-45)")
+                        .style("text-anchor", "end");
+
+                        const yAxis = d3.scaleBand()
+                            .range([ 0, graphHeight ])
+                            .domain(dat.map(d => d.Name))
+                            .padding(.1);
+
+                        g.append("g")
+                            .call(d3.axisLeft(yAxis))
+
+                        g.selectAll("rect.bars")
+                            .data(dat)
+                            .join("rect")
+                            .attr('class', 'bars')
+                            .attr("x", scale(0))
+                            .attr("y", d => yAxis(d['Name']))
+                            .attr("width", d => scale(d['Number']))
+                            .attr("height", yAxis.bandwidth())
+                            .attr("fill", "#69b3a2")
+                            .on('mouseover', function(){
+                                let dat = d3.select(this).datum();
+                                let filtered = filterByName(dat['Name'], i);
+                                console.log(filtered);
+                                let colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+                                filtered.forEach ( (d, i) => {
+                                    let prevSum = filtered.slice(0, i).map(d => d['Number']).reduce(
+                                                    (acc, curr) => acc + curr, 0);
+                                    g.append('rect')
+                                    .attr('id', 'breedbar')
+                                    .attr('class', 'subbar')
+                                    .attr('fill', colorScale(filtered[i]['Breed']))
+                                    .attr('x', scale(prevSum))
+                                    .attr('y', yAxis(dat['Name']))
+                                    .attr('height', yAxis.bandwidth())
+                                    .attr('width', scale(filtered[i]['Number']))
+                                })
+                             })
+                             .on('mouseout', function(){
+                                d3.selectAll('rect.subbar').remove();
+                             })
+                    })
+
+                    function filterByName (name, i){
+                        return breedData[i].filter(d => d['Name'] === name);
+                    }
+
+                    // let leftAxis = d3.axisLeft(transistorScale)
+                    //     .tickSize(2);
+
+                    // svg.append('g')
+                    //     .attr('transform',`translate(${margins.left-10},${margins.top})`)
+                    //     .lower()
+                    //     .call(leftAxis);
+
+                    // let bottomAxis = d3.axisBottom(releaseDayScale)
+                    //     .tickSize(2);
+                    
+                    // svg.append('g')
+                    //     .attr('transform',`translate(${margins.left},${chartHeight+margins.top+10})`)
+                    //     .lower()
+                    //     .call(bottomAxis);
+
+                }
+                
+                requestData();
+
+            </script>
+        </div>
+    </body>
+</html>

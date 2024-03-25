@@ -1,0 +1,25 @@
+zoom function: 
+-> translate extent is how much you are allow to move the plot 
+-> zoom extent is where you are allowed to zoom?
+-> scale extent is how much you can zoom
+
+the zoom event will give k, x, y. 
+-> the k is how zoomed the plot is
+-> the x and y are coordinate of the corner of the plot (not the cursor)
+
+passing in {transform} is equal to passing in "event" and calling "event.transform" knowing that event is a dictionary with transform as key
+
+inside the zooming function: 
+-> viewport.attr("transform", transform) allows plot just go with the transformation from the event
+-> remember to also scale the circle radius
+-> adjust the scale of the axis by using transform.rescaleX and transform.rescaleY 
+-> y.Axis.scale(txScale) only apply internally, so need to use d3.select("g.y.axis").call(yAxis) which use d3 join update instead of creating a new copy
+
+for any sort of movement in a plot, since events can only occur on a pixel, we need to cover the plot with invisible pixel
+-> if the plot only move when on top of a circle, it is an indicator that you did not do the invisible layer
+
+the overview is like a mini chart itself with all the associated elements like minimargin, etc
+
+to make miniplot looks like its working at the beginning, manually activate by using .call and give a transform of zoomIdentity 
+
+to sync big plot with small plot, invert the corner pixel of the big plot into data point --> call the scaling of the miniplot 
