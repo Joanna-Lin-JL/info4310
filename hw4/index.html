@@ -39,6 +39,10 @@
         .gridlines line {
             stroke: lightgray;
         }
+
+        rect:hover{
+            cursor: pointer; 
+        }
     </style>
 
     <body>
@@ -232,6 +236,7 @@
                                 })
                                 .on('mouseover', function(){
                                     let datum = d3.select(this).datum();
+                                    d3.select(this).attr('stroke-width', 3).attr('stroke', 'white');
                                     d3.select(`text.nametext${i}`).text(`Name: ${datum['Name']}`);
                                     d3.select(`text.breedtext${i}`).text(`Breed: ${datum['Breed']}`);
                                     d3.select(`text.numbertext${i}`).text(`Number: ${datum['Number']}`);
