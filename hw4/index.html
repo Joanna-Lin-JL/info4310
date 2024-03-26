@@ -36,28 +36,39 @@
             background-color: #eee; 
         }
         
-
+        .gridlines line {
+            stroke: lightgray;
+        }
     </style>
 
     <body>
         <div style="margin:10px;">
             <h1>Most popular cat and dog names in the UK</h1>
-            <p>*Disclaimer: data may be skewed due to sourcing from an insurance company</p><br>
+            <ul>
+                <li>Use search bar to add bars to the graph</li>
+                <li>Click on a bar to remove from the graph</li>
+                <li>Hover over a bar to show distribution of breeds</li>
+                <li>Hover over colors in the distribution of breeds to view more information</li>
+            </ul>
+            
+            <p>*Disclaimer: data may be skewed due to sourcing from an insurance company</p>
+            <p>*Lots of data are missing for distribution, so there are a lot in the "other" category</p><br>
             <div>
                 <h2>Dog</h2>
-                <input type="text" id="dogsearchbar" class="searchbar" onkeyup="searchFilter('dog')" placeholder="Search dog name">
+                <input type="text" id="dogsearchbar" class="searchbar" onkeyup="searchFilter(0)" placeholder="Search dog name">
                 <ul id="dognames" class="items">
                 </ul>
                 <br>
-                <svg id="dog" height="500" width="650" >
+                <svg id="dog" height="570" width="650" >
                 </svg>
                 
                 </div>
-                <input type="text" id="catsearchbar" class="searchbar" onkeyup="searchFilter('cat')" placeholder="Search cat name">
+                <h2>Cat</h2><br>
+                <input type="text" id="catsearchbar" class="searchbar" onkeyup="searchFilter(1)" placeholder="Search cat name">
                 <ul id="catnames" class="items">
                 </ul>
-                <h2>Cat</h2>
-                <svg id="cat" height="500" width="650" >
+                <br>
+                <svg id="cat" height="570" width="650" >
                 </svg>
                 
             </div>
@@ -67,11 +78,10 @@
                 let dogsvg = d3.select('#dog');
                 let catsvg = d3.select('#cat');
                 
-                // let svgs = [dogsvg, catsvg, dogbreedsvg, catbreedsvg];
                 let svgs = [dogsvg, catsvg];
                 const width = dogsvg.attr('width');
                 const height = dogsvg.attr('height'); 
-                const margin = {top: 10, right: 100, bottom: 100, left: 100};
+                const margin = {top: 80, right: 100, bottom: 100, left: 100};
                 const graphWidth = width - margin.right - margin.left; 
                 const graphHeight = height - margin.top - margin.bottom;
                 let graphs = svgs.map(d => {return d.append('g').attr('transform', 'translate('+margin.left+','+margin.top+')');} );
@@ -85,10 +95,8 @@
                     let displayData = [dogData.slice(0, 7), catData.slice(0, 7)];
                     let breedData = [dogBreedData, catBreedData];
 
-                    console.log(data);
-
                     var categorized = []
-                    let select = [document.getElementById("dognames"), document.getElementById("dognames")];
+                    let select = [document.getElementById("dognames"), document.getElementById("catnames")];
                     let liNames = ['dogli', 'catli']
 
                     data.forEach( (d, i) => {
@@ -121,84 +129,122 @@
                         let extent = d3.extent(displayData[i], d => d['Number'])
                         let scale = d3.scaleLinear().domain([0, extent[1]]).range([0, graphWidth]);
 
-                        let xLabels = g.append('g')
-                        .attr('class', 'xlabels')
-                        .attr("transform", `translate(0, ${graphHeight})`)
-                        .call(d3.axisBottom(scale))
-                        .selectAll("text")
-                        .attr("transform", "translate(-10,0)rotate(-45)")
-                        .style("text-anchor", "end");
+                        let bottomAxis = d3.axisBottom(scale);
+                        let bottomGridlines = d3.axisBottom(scale)
+                          .tickSize(-graphHeight-10)
+                          .tickFormat("")
 
-                        let yAxis = d3.scaleBand()
-                            .range([ 0, graphHeight ])
-                            .domain(displayData[i].map(d => d.Name))
-                            .padding(.1);
+                        g.append("g")
+                                .attr("class", "x axis")
+                                .attr("transform",`translate(0,${graphHeight})`)
+                                .call(bottomAxis)
+                        g.append("g")
+                                .attr("class", "x gridlines")
+                                .attr("transform",`translate(0,${graphHeight})`)
+                                .call(bottomGridlines);
 
-                        let yLabels = g.append("g")
-                            .attr('class', 'xlabels')
-                            .call(d3.axisLeft(yAxis))
-                            .style('font-size', 15)
-                            .style('font-weight', 'bold');
-
+                        // let leftAxis = d3.axisLeft()
+                        let leftAxisG = g.append("g")
+                             .attr("class", `yaxis${i}`)
+                             .attr("transform",`translate(-10,0)`)
+                        
                         updateGraph(g, i);
+
+                        svgs[i].append('text')
+                        .attr('class', `nametext${i}`)
+                        .attr('x', 120)
+                        .attr('y', 10)
+                        .attr('font-size', 14)
+                        .attr('text-anchor', 'start')
+                        .text('');
+
+                        svgs[i].append('text')
+                        .attr('class', `breedtext${i}`)
+                        .attr('x', 120)
+                        .attr('y', 35)
+                        .attr('font-size', 14)
+                        .attr('text-anchor', 'start')
+                        .text('');
+
+                        svgs[i].append('text')
+                        .attr('class', `numbertext${i}`)
+                        .attr('x', 120)
+                        .attr('y', 60)
+                        .attr('font-size', 14)
+                        .attr('text-anchor', 'start')
+                        .text('');
                     })
 
                     function updateGraph(g, i){
                         let extent = d3.extent(displayData[i], d => d['Number'])
                         let scale = d3.scaleLinear().domain([0, extent[1]]).range([0, graphWidth]);
-
-                        let xLabels = g.select('g.xlabels')
-                        .call(d3.axisBottom(scale))
-
-                        let yAxis = d3.scaleBand()
+                        let nameScale = d3.scaleBand()
                             .range([ 0, graphHeight ])
                             .domain(displayData[i].map(d => d.Name))
                             .padding(.1);
 
-                        g.select('g.ylabels')
-                        .call(d3.axisLeft(yAxis))
+                        let leftAxis = d3.axisLeft(nameScale);
+                        d3.select(`g.yaxis${i}`).transition().call(leftAxis);
 
-                        g.selectAll("rect.bars")
+                        // let yLabels = g.append("g")
+                        //     .attr('class', 'xlabels')
+                        //     .call(d3.axisLeft(yAxis))
+                        //     .style('font-size', 15)
+                        //     .style('font-weight', 'bold');
+
+                        g.selectAll("rect.rbars")
                             .data(displayData[i])
                             .join("rect")
-                            .attr('class', 'bars')
+                            .attr('class', 'rbars')
                             .attr("x", scale(0))
-                            .attr("y", d => yAxis(d['Name']))
+                            .attr("y", d => nameScale(d['Name']))
                             .attr("width", d => scale(d['Number']))
-                            .attr("height", yAxis.bandwidth())
+                            .attr("height", nameScale.bandwidth())
                             .attr("fill", "#69b3a2")
                             .attr('opacity', 0.8)
                             .on('mouseover', function(){
                                 let dat = d3.select(this).datum();
                                 let filtered = categorized[i][dat['Name']];
                                 let colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-                                filtered.forEach ( (d, i) => {
-                                    let prevSum = filtered.slice(0, i).map(d => d['Number']).reduce(
-                                                    (acc, curr) => acc + curr, 0);
-                                    g.append('rect')
-                                    .attr('id', 'breedbar')
-                                    .attr('class', 'subbar')
-                                    .attr('fill', filtered[i]['Breed'] === 'other' ? 'gray' : colorScale(filtered[i]['Breed']))
-                                    .attr('x', scale(prevSum))
-                                    .attr('y', yAxis(dat['Name']))
-                                    .attr('height', yAxis.bandwidth())
-                                    .attr('width', scale(filtered[i]['Number']))
-                                    .on('mouseout', function(){
-                                        d3.selectAll('rect.subbar').remove();
-                                    })
+                                    
+                                g.selectAll('rect.subbar')
+                                .data(filtered)
+                                .join('rect')
+                                .attr('class', 'subbar')
+                                .attr('fill', function(d) {return d['Breed'] === 'other' ? 'gray' : colorScale(d['Breed'])})
+                                .attr('x', function(d, i){return scale(filtered.slice(0, i).map(d => d['Number']).reduce(
+                                                (acc, curr) => acc + curr, 0))})
+                                .attr('y', nameScale(dat['Name']))
+                                .attr('height', nameScale.bandwidth())
+                                .attr('width', d => scale(d['Number']))
+                                .on('mouseout', function(){
+                                    d3.selectAll('rect.subbar').remove();
+                                    d3.select(`text.nametext${i}`).text('');
+                                    d3.select(`text.breedtext${i}`).text('');
+                                    d3.select(`text.numbertext${i}`).text('');
+                                })
+                                .on('click', function(){
+                                    displayData[i] = displayData[i].filter( d => {return d['Name']!==d3.select(this).datum()['Name']});
+                                    d3.selectAll('rect.subbar').remove();
+                                    updateGraph(g, i);
+                                })
+                                .on('mouseover', function(){
+                                    let datum = d3.select(this).datum();
+                                    d3.select(`text.nametext${i}`).text(`Name: ${datum['Name']}`);
+                                    d3.select(`text.breedtext${i}`).text(`Breed: ${datum['Breed']}`);
+                                    d3.select(`text.numbertext${i}`).text(`Number: ${datum['Number']}`);
                                 })
                              })
+                             
+                             
 
-                        // g.selectAll('text.bars').each( function () {
-                        //     d3.select(this).remove();
-                        // });
-                        g.selectAll('text.bars')
+                        g.selectAll('text.tbars')
                         .data(displayData[i])
                         .join('text')
-                        .attr('class', 'bars')
+                        .attr('class', 'tbars')
                         .attr('font-size', 12)
                         .attr('x', function (d) {return scale(d['Number'] + scale(0) + 50)})
-                        .attr("y", function (d) {return yAxis(d['Name']) + yAxis.bandwidth()/2})
+                        .attr("y", function (d) {return nameScale(d['Name']) + nameScale.bandwidth()/2})
                         .style('text-anchor', 'start')
                         .text(function (d) {return d['Number']})
                         
@@ -228,30 +274,24 @@
                 requestData();
 
                 function searchFilter(type) {
-                    let input = document.getElementById('dogsearchbar').value.toLowerCase();
-                    let lst = document.getElementById('dognames');
-                    let lstItems = document.getElementsByClassName('dogli');
+                    let inputs = [document.getElementById('dogsearchbar').value.toLowerCase(), document.getElementById('catsearchbar').value.toLowerCase()];
+                    let lsts = [document.getElementById('dognames'), document.getElementById('catnames')];
+                    let lstItems = [document.getElementsByClassName('dogli'), document.getElementsByClassName('catli')];
 
-                    if (type==='cat'){
-                        input = document.getElementById('catsearchbar').value.toLowerCase();
-                        lst = document.getElementById('catnames');
-                        lstItems = document.getElementsByClassName('catli');
-                    }
-                    
-                    if (input){
-                        if (lst.getAttribute('hidden')){
-                            lst.removeAttribute('hidden');
+                    if (inputs[type]){
+                        if (lsts[type].getAttribute('hidden')){
+                            lsts[type].removeAttribute('hidden');
                         }
-                        for (i = 0; i < lstItems.length; i++) {
-                            text = lstItems[i].textContent;
-                            if (text.toLowerCase().includes(input)) {
-                                lstItems[i].style.display = "";
+                        for (i = 0; i < lstItems[type].length; i++) {
+                            text = lstItems[type][i].textContent;
+                            if (text.toLowerCase().includes(inputs[type])) {
+                                lstItems[type][i].style.display = "";
                             } else {
-                                lstItems[i].style.display = "none";
+                                lstItems[type][i].style.display = "none";
                             }
                         }
                     } else {
-                        lst.setAttribute ('hidden', 'hidden');
+                        lsts[type].setAttribute ('hidden', 'hidden');
                     }
                 }
 
